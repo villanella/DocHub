@@ -89,6 +89,24 @@ let config = {
 	transpileDependencies: ['vueitfy'],
 	chainWebpack: (config) => {
 		config.module.rules.delete("svg");
+		// experiments.outputModule below produces bundles with bare `export`
+		// statements, but the default HtmlWebpackPlugin injects them as classic
+		// <script defer> tags, so the browser throws "Unexpected token 'export'"
+		// as soon as it tries to parse them. Force module script tags instead.
+		config.plugin('html').tap((args) => {
+			args[0].scriptLoading = 'module';
+			return args;
+		});
+		// Without this, `npm run build` (and therefore `npm run backend`) fails
+		// outright: Terser doesn't know the output is ESM and rejects the
+		// top-level `export` statement outputModule produces ("Export statement
+		// may only appear at the top level").
+		if (config.optimization.minimizers.has('terser')) {
+			config.optimization.minimizer('terser').tap((args) => {
+				args[0].terserOptions = { ...args[0].terserOptions, module: true };
+				return args;
+			});
+		}
 	},
 	configureWebpack: {
 		cache: (process.env.VUE_APP_DOCHUB_BUILDING_CACHE || 'memory').toLowerCase() === 'filesystem'
@@ -105,7 +123,7 @@ let config = {
 		},
 		optimization: {
 			splitChunks: false,
-			runtimeChunk: 'single'
+			runtimeChunk: false
 		},
 		entry: { ...entries },
 		plugins,

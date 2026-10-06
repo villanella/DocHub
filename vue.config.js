@@ -136,7 +136,8 @@ let config = {
 			]
 		},
 		output: {
-			filename: '[name].js'
+			filename: '[name].js',
+			module: false
 		},
 		resolve: {
 			alias: {
